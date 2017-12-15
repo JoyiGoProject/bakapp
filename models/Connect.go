@@ -14,7 +14,12 @@ type Device struct {
 	NickName string
 }
 
-func Connect() (d []orm.Params, derr error) {
+type Group struct {
+	Id   int64  //主键
+	Name string //组别名称
+}
+
+func Connect() (d []orm.Params, g []orm.Params, derr error) {
 	dns, _ := getConfig(1)
 	beego.Debug(dns)
 	fmt.Printf("数据库is %s", dns)
@@ -23,10 +28,10 @@ func Connect() (d []orm.Params, derr error) {
 		fmt.Println("\n========>  数据库连接failed  <==========")
 	} else {
 		fmt.Println("\n========>  数据库连接sucess  <==========")
-		d, derr = GetHtransData()
-		return d, derr
+		d, g, derr = GetHtransData()
+		return d, g, derr
 	}
-	return nil, nil
+	return d, g, derr
 }
 
 func getConfig(flag int) (string, string) {
@@ -49,23 +54,25 @@ func getConfig(flag int) (string, string) {
 	return dns, db_name
 }
 
-func GetHtransData() (device []orm.Params, err error) {
+func GetHtransData() (device []orm.Params, group []orm.Params, err error) {
 	o := orm.NewOrm()
 	sql := "SELECT * FROM device"
 	_, err = o.Raw(sql).Values(&device)
-	return device, err
+	sql2 := "SELECT * FROM `GROUP`"
+	o.Raw(sql2).Values(&group)
+	return device, group, err
 }
 
-func ConnectHcluster(d []Device) (derr error) {
+func ConnectHcluster(d []Device, g []Group, num int) (derr error) {
 	dns, _ := getConfigHcluster(1)
 	beego.Debug(dns)
 	fmt.Printf("数据库is %s", dns)
 	err := orm.RegisterDataBase("default", "mysql", dns)
 	if err != nil {
-		fmt.Println("\n========>  数据库连接failed  <==========")
+		fmt.Println("\n========>  数据库连接failed  <==========", err)
 	} else {
 		fmt.Println("\n========>  数据库连接sucess  <==========")
-		derr := SaveData(d)
+		derr := SaveData(d, g, num)
 		return derr
 	}
 	return nil
@@ -91,18 +98,31 @@ func getConfigHcluster(flag int) (string, string) {
 	return dns, hcluster_name
 }
 
-func SaveData(d []Device) (err error) {
-	beego.Info(">>>>>>>>>>>>>>>>>>", d)
+func SaveData(d []Device, g []Group, num int) (err error) {
 	o := orm.NewOrm()
-	for i := 0; i < len(d); i++ {
-		if d[i].Uuid == "" {
-			break
-		} else {
-			sql := "UPDATE device SET group_id= " + fmt.Sprintf("%d", d[i].GroupId) + " , nick_name= \"" + d[i].NickName + "\" WHERE uuid=\"" + d[i].Uuid + "\";"
-			beego.Info(">>>>>>>>>>>>>>>>", d[i].Uuid)
-			beego.Info("+++++++++++++++", sql)
-			o.Raw(sql).Exec()
-			o.Commit()
+	if num == 1 {
+		for i := 0; i < len(d); i++ {
+			if d[i].Uuid == "" {
+				break
+			} else {
+				sql := "UPDATE device SET group_id= " + fmt.Sprintf("%d", d[i].GroupId) + " , nick_name= \"" + d[i].NickName + "\" WHERE uuid=\"" + d[i].Uuid + "\";"
+				beego.Info(">>>>>>>>>>>>>>>>", d[i].Uuid)
+				beego.Info("+++++++++++++++", sql)
+				o.Raw(sql).Exec()
+				o.Commit()
+			}
+		}
+	} else {
+		for i := 0; i < len(g); i++ {
+			if g[i].Id == 0 {
+				break
+			} else {
+				sql := "UPDATE `group` SET name= \"" + g[i].Name + "\" WHERE id= \"" + fmt.Sprintf("%d", g[i].Id) + "\";"
+				beego.Info(">>>>>>>>>>>>>>>>", g[i].Id)
+				beego.Info("+++++++++++++++", sql)
+				o.Raw(sql).Exec()
+				o.Commit()
+			}
 		}
 	}
 	return nil

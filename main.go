@@ -1,11 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"bakapp/data"
+	"fmt"
 	"os"
-
-	"github.com/astaxie/beego"
 )
 
 func main() {
@@ -20,5 +18,5 @@ func main() {
 		fmt.Println("备份数据(backup): bakapp backup")
 		fmt.Println("更新数据(update): bakapp update")
 	}
-	beego.Run()
+	os.Exit(-1)
 }
